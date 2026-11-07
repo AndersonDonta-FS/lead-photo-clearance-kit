@@ -28,3 +28,6 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+- Report preparation and PDF processing run locally in browser event handlers; uploaded documents are not sent to a service because this workflow only needs a downloadable report.
+- Reusable report inputs and image normalization live in report-fields; the home route owns the in-session report draft and step navigation.
