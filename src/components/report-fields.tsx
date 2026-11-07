@@ -24,7 +24,7 @@ export async function readImage(file: File): Promise<string> {
   return canvas.toDataURL("image/jpeg", .9);
 }
 
-export function UploadField({ label, accept, name, photo, onFiles, onRemove, compact = false }: { label: string; accept: string; name?: string; photo?: string | null; onFiles: (files: File[]) => Promise<void>; onRemove?: () => void; compact?: boolean }) {
+export function UploadField({ label, accept, name, photo, onFiles, onRemove, compact = false }: { label: string; accept: string; name?: string | undefined; photo?: string | null; onFiles: (files: File[]) => Promise<void>; onRemove?: () => void; compact?: boolean }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false); const [error, setError] = useState("");
   async function load(files: File[]) { if (!files.length) return; setBusy(true); setError(""); try { await onFiles(files); } catch (e) { setError(e instanceof Error ? e.message : "This file could not be opened."); } finally { setBusy(false); } }
