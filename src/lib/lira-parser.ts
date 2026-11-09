@@ -161,9 +161,9 @@ export async function parseLira(
         }
         if (!current) continue;
         const m = t.match(
-          /^(XRF Shot #|Room \(XRF\)|Building Feature \(XRF\)|Component \(XRF\)|Substrate \(XRF\)|Location \(XRF\)|Paint Color \(XRF\)|Condition \(XRF\)|XRF Result: \(mg\/cm²\)|XRF Result: \(mg\/cm2\)|Lead Present:)\s*(.*)$/i,
+          /^(XRF Shot #|Room \(XRF\)|Building Feature \(XRF\)|Component \(XRF\)|Substrate \(XRF\)|Location \(XRF\)|Paint Color \(XRF\)|Condition \(XRF\)|X[RF]{2} Result: \(mg\/cm²\)|X[RF]{2} Result: \(mg\/cm2\)|Lead Present:)\s*(.*)$/i,
         );
-        if (m) current.fields[m[1].replace(/\s*\(.*$/, "").replace(/:$/, "").toLowerCase()] = m[2].trim();
+        if (m) current.fields[m[1].replace(/^XFR/i, "XRF").replace(/\s*\(.*$/, "").replace(/:$/, "").toLowerCase()] = m[2].trim();
         if (/Positive XRF Photos/i.test(t)) current.expectPhotos = true;
       } else if (ev.img && current?.expectPhotos) {
         const c = await getCanvas();
@@ -179,11 +179,16 @@ export async function parseLira(
   }
 
   const hazards: Hazard[] = entries
-    .filter((e) => /^yes/i.test(e.fields["lead present"] ?? ""))
+    .filter((e) => {
+      if (!/^yes/i.test(e.fields["lead present"] ?? "")) return false;
+      // Skip tests marked "Yes" whose reading is below the 1.0 mg/cm² lead-based paint threshold (data-entry mistakes).
+      const v = parseFloat((e.fields["xrf result:"] ?? e.fields["xrf result"] ?? "").replace(/[^\d.\-]/g, ""));
+      return isNaN(v) || v >= 1.0;
+    })
     .map((e) => ({
       id: uid(),
       location: titleCaseLoc(e.fields["room"] ?? "", e.fields["building feature"] ?? "", e.fields["location"] ?? ""),
-      component: e.fields["component"] ?? "",
+      component: e.fields["component"] || e.fields["building feature"] || "",
       substrate: e.fields["substrate"] ?? "",
       status: "Pass" as const,
       before: e.photos[0] ?? null,
