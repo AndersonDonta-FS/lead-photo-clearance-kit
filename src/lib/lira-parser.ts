@@ -230,7 +230,7 @@ export function standardFor(location: string): string {
 /** Pure text parser for EMSL-style lab reports ("Client Sample ID: 1/Kitchen Floor ... Lead <2.0 µg/ft²"). */
 export function parseLabText(text: string): LabSample[] {
   const out: LabSample[] = [];
-  const re = /Client Sample ID:\s*([^\/\n]+?)\s*\/\s*(.+?)\s+Date Sampled:\s*([\d\/]+)[\s\S]*?Lead\s+(<?\s*[\d.]+)\s*µg\/ft/g;
+  const re = /Client Sample ID:\s*([^\/\n]+?)\s*\/\s*(.+?)\s+Date Sampled:\s*([\d\/]+)[\s\S]*?Lead\b[^\n]*?(<?\s*\d[\d.]*)\s*µg\/ft/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
     const location = m[2].replace(/\s+/g, " ").trim();
