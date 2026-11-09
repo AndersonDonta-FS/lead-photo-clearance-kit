@@ -479,15 +479,35 @@ export async function buildReport(d: ReportData): Promise<Uint8Array> {
   {
     const p = newPage();
     center(p, "ADDITIONAL RESOURCES", H - 160, 18, F.b);
-    let yy = H - 230;
+
+    // load the QR images from /public (matched to each resource by its name)
+    const qrFor = (title: string) =>
+      /lead information/i.test(title) ? "epa"
+      : /disease control|cdc/i.test(title) ? "cdc"
+      : /product safety/i.test(title) ? "cpsc"
+      : /health/i.test(title) ? "ldh"
+      : "";
+    const qrCache: Record<string, Awaited<ReturnType<typeof pdf.embedPng>>> = {};
+    const getQr = async (key: string) => {
+      if (qrCache[key]) return qrCache[key];
+      const res = await fetch(`/qr-${key}.png`);
+      if (!res.ok) throw new Error(`QR image missing: qr-${key}.png (check it is in the public folder)`);
+      qrCache[key] = await pdf.embedPng(new Uint8Array(await res.arrayBuffer()));
+      return qrCache[key];
+    };
+
+    let yy = H - 240;
     for (const [a, b] of RESOURCES) {
-      p.drawText("\u2022", { x: 170, y: yy, size: 12, font: F.r });
-      p.drawText(clean(a), { x: 188, y: yy, size: 12, font: F.r });
-      p.drawText(clean(b), { x: 188, y: yy - 16, size: 12, font: F.r });
-      yy -= 64;
+      const key = qrFor(a);
+      if (key) {
+        const qr = await getQr(key);
+        p.drawImage(qr, { x: ML + 40, y: yy - 38, width: 64, height: 64 });
+      }
+      p.drawText(clean(a), { x: ML + 125, y: yy + 6, size: 13, font: F.b });
+      p.drawText(clean(b), { x: ML + 125, y: yy - 12, size: 12, font: F.r });
+      yy -= 110;
     }
   }
-
   // page numbers
   pdf.getPages().forEach((p, i) => {
     const s = String(i + 1);
