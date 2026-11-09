@@ -217,3 +217,40 @@ export async function pdfPageCount(data: ArrayBuffer): Promise<number> {
   const doc = await pdfjs.getDocument({ data: new Uint8Array(data.slice(0)) }).promise;
   return doc.numPages;
 }
+
+export interface LabSample { sampleId: string; location: string; result: string; standard: string; sampled: string }
+
+/** Dust-wipe clearance standard (µg/ft²) by surface. */
+export function standardFor(location: string): string {
+  if (/trough|well/i.test(location)) return "100";
+  if (/sill|stool/i.test(location)) return "40";
+  return "5.0";
+}
+
+/** Pure text parser for EMSL-style lab reports ("Client Sample ID: 1/Kitchen Floor ... Lead <2.0 µg/ft²"). */
+export function parseLabText(text: string): LabSample[] {
+  const out: LabSample[] = [];
+  const re = /Client Sample ID:\s*([^\/\n]+?)\s*\/\s*(.+?)\s+Date Sampled:\s*([\d\/]+)[\s\S]*?Lead\b[^\n]*?(<?\s*\d[\d.]*)\s*µg\/ft/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    const location = m[2].replace(/\s+/g, " ").trim();
+    out.push({ sampleId: m[1].trim(), location, result: m[4].replace(/\s+/g, " ").replace(/^</, "< "), standard: standardFor(location), sampled: m[3] });
+  }
+  return out;
+}
+
+export async function parseLabPdf(data: ArrayBuffer): Promise<LabSample[]> {
+  const pdfjs = await loadPdfjs();
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(data.slice(0)) }).promise;
+  let text = "";
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    const tc = await page.getTextContent();
+    const items = (tc.items as { str: string; transform: number[] }[]).filter(i => i.str?.trim());
+    items.sort((a, b) => b.transform[5] - a.transform[5] || a.transform[4] - b.transform[4]);
+    let lastY: number | null = null;
+    for (const it of items) { text += (lastY !== null && Math.abs(lastY - it.transform[5]) > 3 ? "\n" : " ") + it.str; lastY = it.transform[5]; }
+    text += "\n";
+  }
+  return parseLabText(text);
+}
