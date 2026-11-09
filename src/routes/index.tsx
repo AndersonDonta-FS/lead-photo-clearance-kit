@@ -37,11 +37,21 @@ function Index() {
       setImportName(file.name); setNotice(`${result.hazards.length} lead-positive hazards imported · ${result.hazards.filter(h => h.before).length} before photos found`);
     } finally { setProgress(null); }
   }
-  const missing = [!data.ownerName.trim() && "Owner name", !data.street.trim() && "Property address", !data.reportDate && "Report date", !data.clearanceDate && "Clearance date", !data.raCompany.trim() && "Risk assessment company", !data.raDate && "Risk assessment date", !data.hazards.length && "Visual inspection hazards", !data.dustWipes.length && "Dust wipe results", data.hazards.some(h => !h.location || !h.component || !h.substrate || !h.before || !h.after) && "Complete hazard details and before/after photos", data.dustWipes.some(w => !w.location || !w.result || !w.standard) && "Complete dust wipe results"].filter(Boolean) as string[];
+  const blankHazard = (h: Hazard) => !h.location.trim() && !h.component.trim() && !h.substrate.trim() && !h.before && !h.after;
+  const blankWipe = (w: ReportData["dustWipes"][number]) => !w.location.trim();
+  const hazards = data.hazards.filter(h => !blankHazard(h));
+  const wipes = data.dustWipes.filter(w => !blankWipe(w));
+  const hazardGaps = data.hazards.flatMap((h, i) => {
+    if (blankHazard(h)) return [];
+    const gaps = [!h.location.trim() && "location", !h.component.trim() && "component", !h.substrate.trim() && "substrate", !h.before && "before photo", !h.after && "after photo"].filter(Boolean);
+    return gaps.length ? [`Hazard ${String(i + 1).padStart(2, "0")}: ${gaps.join(", ")}`] : [];
+  });
+  const wipeGaps = data.dustWipes.flatMap((w, i) => blankWipe(w) ? [] : [!w.result.trim() && "result", !w.standard.trim() && "standard"].filter(Boolean).length ? [`Dust sample ${i + 1}: ${[!w.result.trim() && "result", !w.standard.trim() && "standard"].filter(Boolean).join(", ")}`] : []);
+  const missing = [!data.ownerName.trim() && "Owner name", !data.street.trim() && "Property address", !data.reportDate && "Report date", !data.clearanceDate && "Clearance date", !data.raCompany.trim() && "Risk assessment company", !data.raDate && "Risk assessment date", !hazards.length && "Visual inspection hazards", !wipes.length && "Dust wipe results (add a sample with a location on the Dust & attachments step)", ...hazardGaps, ...wipeGaps].filter(Boolean) as string[];
   async function download() {
     if (missing.length) { setError(`Complete these items first: ${missing.join(", ")}.`); return; }
     setBusy(true); setError("");
-    try { const { buildReport } = await import("@/lib/report-pdf"); const bytes = await buildReport(data); const blob = new Blob([new Uint8Array(bytes)], { type: "application/pdf" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `Clearance_Report_${data.street.replace(/[^a-z0-9]+/gi, "_")}.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10000); setNotice("Your clearance report has been downloaded."); } catch(e) { setError(e instanceof Error ? e.message : "The report could not be generated."); } finally { setBusy(false); }
+    try { const { buildReport } = await import("@/lib/report-pdf"); const bytes = await buildReport({ ...data, hazards, dustWipes: wipes }); const blob = new Blob([new Uint8Array(bytes)], { type: "application/pdf" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `Clearance_Report_${data.street.replace(/[^a-z0-9]+/gi, "_")}.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10000); setNotice("Your clearance report has been downloaded."); } catch(e) { setError(e instanceof Error ? e.message : "The report could not be generated."); } finally { setBusy(false); }
   }
   const completedPhotos = data.hazards.filter(h => h.after).length;
   return <div className="min-h-screen">
