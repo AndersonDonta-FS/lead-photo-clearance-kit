@@ -16,6 +16,19 @@ export interface LiraResult {
   raCompany: string;
   raDate: string; // ISO yyyy-mm-dd
   address: string;
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+}
+
+/** Split "1409 Alabama Street, Monroe, LA 71202" into its parts. */
+export function splitAddress(full: string): { street: string; city: string; state: string; zip: string } {
+  const text = full.replace(/\s+/g, " ").trim();
+  const m = text.match(/^(.+?),\s*([^,]+?),?\s+([A-Z]{2})\.?,?\s+(\d{5})(?:-\d{4})?\.?$/i);
+  if (m) return { street: m[1].trim(), city: m[2].trim(), state: m[3].toUpperCase(), zip: m[4] };
+  const zip = text.match(/\b(\d{5})(?:-\d{4})?\s*$/)?.[1] ?? "";
+  return { street: text.split(",")[0].trim(), city: "", state: "", zip };
 }
 
 type Mat = [number, number, number, number, number, number];
@@ -208,6 +221,7 @@ export async function parseLira(
     raCompany: company,
     raDate: dateMatch ? toIso(dateMatch[1]) : "",
     address,
+    ...splitAddress(address),
   };
 }
 
