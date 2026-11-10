@@ -30,16 +30,16 @@ export function parseLabText(text: string): LabSample[] {
   const out: LabSample[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
-    const idText = m[1].replace(/\s+/g, " ").trim();          // "1/DE 2 Floor"
+    const idText = (m[1] ?? "").replace(/\s+/g, " ").trim();  // "1/DE 2 Floor"
     const split = idText.match(/^(\d+)\s*\/\s*(.+)$/);
-    const sampleId = split ? split[1] : String(out.length + 1);
-    const location = cleanLocation(split ? split[2] : idText);
+    const sampleId = split?.[1] ?? String(out.length + 1);
+    const location = cleanLocation(split?.[2] ?? idText);
     out.push({
       sampleId,
       location,
-      result: m[3].replace(/[\s,]/g, ""),                       // "<2.0"
+      result: (m[3] ?? "").replace(/[\s,]/g, ""),              // "<2.0"
       standard: clearanceStandard(location),
-      sampled: m[2],
+      sampled: m[2] ?? "",
     });
   }
   return out;
