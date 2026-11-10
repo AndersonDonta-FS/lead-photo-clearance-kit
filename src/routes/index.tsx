@@ -33,7 +33,7 @@ function Index() {
       const { parseLira } = await import("@/lib/lira-parser");
       const result = await parseLira(await file.arrayBuffer(), setProgress);
       if (!result.hazards.length) throw new Error("No lead-positive tests were found. You can add hazards manually or try another LIRA report.");
-      setData(d => ({ ...d, hazards: result.hazards, raCompany: result.raCompany || d.raCompany, raDate: result.raDate || d.raDate, street: d.street || result.address }));
+      setData(d => ({ ...d, hazards: result.hazards, raCompany: result.raCompany || d.raCompany, raDate: result.raDate || d.raDate, street: result.street || d.street, city: result.city || d.city, state: result.state || d.state, zip: result.zip || d.zip }));
       setImportName(file.name); setNotice(`${result.hazards.length} lead-positive hazards imported · ${result.hazards.filter(h => h.before).length} before photos found`);
     } catch (e) { setError(e instanceof Error ? e.message : "Could not read that LIRA report."); }
     finally { setProgress(null); }
